@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: No Profile.php
-Version: 0.2
+Version: 0.2.0.1
 Description: Removes the profile page for all users other than those who can moderate comments.
 Plugin URI: https://github.com/tismelyla/wp-no-profile.php
 Author: tismelyla
