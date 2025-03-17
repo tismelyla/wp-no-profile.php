@@ -1,57 +1,72 @@
 <?php
 /*
 Plugin Name: No Profile.php
-Version: 0.3.0.0
-Description: Removes the profile page for all users other than those who can moderate comments.
+Version: 0.3.1.0
+Description: Removes the profile page for through a custom capability.
 Plugin URI: https://github.com/tismelyla/wp-no-profile.php
 Author: tismelyla
 */
 
-/**
- * Remove the Edit Profile link from the admin bar for non-moderators.
- */
-function no_profile_add_custom_capability() {
-    // Add 'view_profile' capability to roles that need it (e.g., 'editor', 'author', etc.)
-    $roles = ['editor', 'author', 'contributor']; // Adjust this list based on which roles should have access
+// Function to add 'view_profile' capability to selected roles
+function no_profile_add_capabilities() {
+    $roles = ['administrator', 'editor', 'author', 'contributor'];
 
     foreach ($roles as $role_name) {
-        $role = get_role($role_name);
-        if ($role) {
-            $role->add_cap('view_profile', true);  // Add 'view_profile' capability to the role
+        if ($role = get_role($role_name)) { // Check if role exists
+            if (!$role->has_cap('view_profile')) {
+                $role->add_cap('view_profile', true);
+            }
         }
     }
 }
-register_activation_hook(__FILE__, 'no_profile_add_custom_capability');
 
+// Function to remove 'view_profile' capability when plugin is deactivated
+function no_profile_remove_capabilities() {
+    $roles = ['administrator', 'editor', 'author', 'contributor'];
+
+    foreach ($roles as $role_name) {
+        if ($role = get_role($role_name)) { // Check if role exists
+            $role->remove_cap('view_profile');
+        }
+    }
+}
+
+// Ensure role modifications happen properly
+function no_profile_run_on_init() {
+    no_profile_add_capabilities();
+}
+add_action('init', 'no_profile_run_on_init');
+
+// Register activation and deactivation hooks
+register_activation_hook(__FILE__, 'no_profile_add_capabilities');
+register_deactivation_hook(__FILE__, 'no_profile_remove_capabilities');
+
+
+// Disables rendering of the "edit profile" button in the admin bar
 function mytheme_admin_bar_render() {
-    if ( !current_user_can( 'view_profile' ) ) { // Use view_profile to check for users who can moderate comments
-        global $wp_admin_bar;
-        $wp_admin_bar->remove_menu( 'edit-profile', 'user-actions' );
+    if (is_admin_bar_showing()) {
+        if ( !current_user_can( 'view_profile' ) ) {
+            global $wp_admin_bar;
+            $wp_admin_bar->remove_menu( 'edit-profile', 'user-actions' );
+        }
     }
 }
 add_action( 'wp_before_admin_bar_render', 'mytheme_admin_bar_render' );
 
-/**
- * Stop non-moderator users from accessing the profile page and remove the profile page from the admin menu.
- */
+// Stops direct access
 function stop_access_profile() {
-    // Check if the user does not have the 'view_profile' capability
-    if ( !current_user_can( 'view_profile' ) ) { 
-        // Redirect non-moderator users from the profile page if they try to access it directly
-        if ( is_admin() && 'profile.php' === basename( $_SERVER['PHP_SELF'] ) ) {
-            wp_redirect( admin_url() ); // Redirect to the dashboard
-            exit;
-        }
-
-        // Redirect non-moderator users from the profile page using the page query parameter
-        if ( is_admin() && isset( $_GET['page'] ) && 'profile.php' === $_GET['page'] ) {
-            wp_redirect( admin_url() ); // Redirect to the dashboard
-            exit;
-        }
-
-        // Remove profile-related menu items from the admin sidebar
-        remove_menu_page( 'profile.php' );
-        remove_submenu_page( 'users.php', 'profile.php' );
+    if (!current_user_can('view_profile') && is_admin() && 'profile.php' === basename($_SERVER['PHP_SELF'])) {
+        wp_redirect(admin_url());
+        exit;
     }
 }
-add_action( 'admin_init', 'stop_access_profile' );
+add_action('admin_init', 'stop_access_profile');
+
+// Removes menu pages
+function no_profile_remove_menu_items() {
+    if (!current_user_can('view_profile')) {
+        remove_menu_page('profile.php');
+        remove_submenu_page('users.php', 'profile.php');
+    }
+}
+add_action('admin_menu', 'no_profile_remove_menu_items', 999);
