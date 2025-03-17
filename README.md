@@ -1,3 +1,6 @@
 # wp-no-profile.php
 
-Removing the ability for users without the "moderate_comments" ability from being able to edit their profile on WP.
+A WordPress plugin aimed at providing profile visibility capabilities.
+
+### Uses custom capabilities!
+**Please** use [User Role Editor](https://wordpress.org/plugins/user-role-editor/) to manage these capabilities!
